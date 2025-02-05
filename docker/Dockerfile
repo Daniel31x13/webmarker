@@ -18,6 +18,10 @@ RUN mkdir /data
 
 WORKDIR /data
 
+# create user account
+RUN useradd -u 911 -U -d /data -s /bin/bash abc \
+    && usermod -G users abc 
+
 COPY ./package.json ./yarn.lock ./playwright.config.ts ./
 
 RUN --mount=type=cache,sharing=locked,target=/usr/local/share/.cache/yarn \
@@ -25,7 +29,7 @@ RUN --mount=type=cache,sharing=locked,target=/usr/local/share/.cache/yarn \
     yarn install --network-timeout 10000000 && \
     # Install curl for healthcheck, and ca-certificates to prevent monolith from failing to retrieve resources due to invalid certificates
     apt-get update && \
-    apt-get install -yqq --no-install-recommends curl ca-certificates && \
+    apt-get install -yqq --no-install-recommends curl ca-certificates gosu && \
     apt-get autoremove && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -51,4 +55,8 @@ HEALTHCHECK --interval=30s \
 
 EXPOSE 3000
 
-CMD yarn prisma migrate deploy && yarn start
+# Start entrypoint
+COPY ./docker/entrypoint.sh /data/entrypoint.sh
+RUN chmod +x /data/entrypoint.sh
+
+ENTRYPOINT ["/data/entrypoint.sh"]
